@@ -1,0 +1,10 @@
+{
+    "name":"Brazilian Legends",
+    "symbol":"BRASIL",
+    "description":"Compressed NFT collection for Brazilian legends",
+    "seller_fee_basis_points":0,
+    "image":" ",
+    "external_url":"https://twitter.com/cagri058",
+    "collection":{"name":"First Compress","family":"First Compress"},
+    "properties":{"files":[{"uri":" ","type":"image/png"},{"uri":" ","type":"image/png"},{"uri":" ","type":"image/png"},{"uri":" ","type":"image/png"}],
+    "category":"image","creators":[{"address":"8X5zHADZ4oTZXC59JmjVn1NRqcA6DGc649TrwL11ZdNr","share":100}]}}
