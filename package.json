@@ -1,0 +1,15 @@
+{
+  "dependencies": {
+    "@metaplex-foundation/mpl-bubblegum": "^0.7.0",
+    "@metaplex-foundation/mpl-token-metadata": "^2.12.0",
+    "@solana/spl-account-compression": "^0.1.8",
+    "@solana/spl-token": "^0.3.8",
+    "@solana/web3.js": "^1.77.3"
+  },
+  "devDependencies": {
+    "eslint": "^8.35.0",
+    "ts-node": "^10.9.1",
+    "tsconfig-paths": "^4.1.2",
+    "typescript": "^4.8.4"
+  }
+}
