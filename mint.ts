@@ -1,90 +1,82 @@
-import { Keypair, LAMPORTS_PER_SOL, clusterApiUrl } from "@solana/web3.js";
+import {
+  Keypair,
+  LAMPORTS_PER_SOL,
+  clusterApiUrl,
+  PublicKey, Transaction,
+  sendAndConfirmTransaction, Connection,
+  TransactionInstruction,
+} from "@solana/web3.js";
+import { createAccount, createMint, mintTo, TOKEN_PROGRAM_ID } from "@solana/spl-token";
 import {
   ValidDepthSizePair,
   getConcurrentMerkleTreeAccountSize,
+  createAllocTreeIx,
+  SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+  SPL_NOOP_PROGRAM_ID,
 } from "@solana/spl-account-compression";
 import {
   MetadataArgs,
   TokenProgramVersion,
-  TokenStandard,
+  TokenStandard, createCreateTreeInstruction,
+  createMintToCollectionV1Instruction,
+  computeCreatorHash,
+  computeDataHash,
 } from "@metaplex-foundation/mpl-bubblegum";
-import { CreateMetadataAccountArgsV3 } from "@metaplex-foundation/mpl-token-metadata";
+import { 
+  CreateMetadataAccountArgsV3, 
+  PROGRAM_ID as TOKEN_METADATA_PROGRAM_ID,
+   createCreateMasterEditionV3Instruction,
+   createCreateMetadataAccountV3Instruction,
+   createSetCollectionSizeInstruction} from "@metaplex-foundation/mpl-token-metadata";
+import { PROGRAM_ID as BUBBLEGUM_PROGRAM_ID, compressStruct } from "@metaplex-foundation/mpl-bubblegum/dist/src/generated";
+import * as fs from 'fs';
 
-// import custom helpers for demos
-import {
-  loadKeypairFromFile,
-  loadOrGenerateKeypair,
-  numberFormatter,
-  printConsoleSeparator,
-  savePublicKeyToFile,
-} from "@/utils/helpers";
 
-// import custom helpers to mint compressed NFTs
-import { createCollection, createTree, mintCompressedNFT } from "@/utils/compression";
-import { WrapperConnection } from "@/ReadApi/WrapperConnection";
-import dotenv from "dotenv";
-dotenv.config();
-
-// define some reusable balance values for tracking
 let initBalance: number, balance: number;
 
 (async () => {
-  //////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
 
-  // generate a new Keypair for testing, named `wallet`
-  const testWallet = loadOrGenerateKeypair("testWallet");
+//yerel cüzdan bilgilerini içeri aktarın
+  const keyfileBytes = JSON.parse(fs.readFileSync('id.json', { encoding: "utf-8" }));
 
-  // generate a new keypair for use in this demo (or load it locally from the filesystem when available)
-  const payer = process.env?.LOCAL_PAYER_JSON_ABSPATH
-    ? loadKeypairFromFile(process.env?.LOCAL_PAYER_JSON_ABSPATH)
-    : loadOrGenerateKeypair("payer");
-
-  console.log("Payer address:", payer.publicKey.toBase58());
-  console.log("Test wallet address:", testWallet.publicKey.toBase58());
-
-  //////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-
-  // load the env variables and store the cluster RPC url
-  const CLUSTER_URL = process.env.RPC_URL ?? clusterApiUrl("devnet");
-
-  // create a new rpc connection, using the ReadApi wrapper
-  const connection = new WrapperConnection(CLUSTER_URL, "confirmed");
-
-  // get the payer's starting balance (only used for demonstration purposes)
-  initBalance = await connection.getBalance(payer.publicKey);
-
-  //////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-
-  /*
-    Define our tree size parameters
-  */
-  const maxDepthSizePair: ValidDepthSizePair = {
- 
-    maxDepth: 5,
-    maxBufferSize: 8,
-  };
-  const canopyDepth = maxDepthSizePair.maxDepth - 3;
-
-  /*
-    Actually allocate the tree on chain
-  */
-
-  // define the address the tree will live at
-  const treeKeypair = Keypair.generate();
-
-  // create and send the transaction to create the tree on chain
-  const tree = await createTree(connection, payer, treeKeypair, maxDepthSizePair, canopyDepth);
+  const payer = Keypair.fromSecretKey(new Uint8Array(keyfileBytes));
+  const testWallet = Keypair.fromSecretKey(new Uint8Array(keyfileBytes));
+  const connection = new Connection(clusterApiUrl("devnet"), "confirmed");
 
   
-  //  NFT kolleksiyonu için metadata tanımlayalım
+  console.log("İşlemi gerçekleştiren cüzdan adresi:", payer.publicKey.toBase58());
+  console.log("Deneme Cüzdan adresi:", testWallet.publicKey.toBase58());
+
+ 
+
+  //işlem öncesi cüzdan bakiyesi
+  initBalance = await connection.getBalance(payer.publicKey);
+
+
+
+  
+   //Ağaç boyutu için parametreleri ayarlayın
+  
+  const maxDepthSizePair: ValidDepthSizePair = {
+   
+    maxDepth: 14,
+    maxBufferSize: 64,
+  };
+  const canopyDepth = maxDepthSizePair.maxDepth - 5;
+
+
+  // ağacın oluşturulacağı adres
+  const treeKeypair = Keypair.generate();
+
+  // zincir üzerinde ağaç oluşturma işlemi
+  const tree = await createTree(connection, payer, treeKeypair, maxDepthSizePair, canopyDepth);
+
+
   const collectionMetadataV3: CreateMetadataAccountArgsV3 = {
     data: {
       name: "Brazilian Legends",
-      symbol: "Brasil",
-      uri: "https://raw.githubusercontent.com/cagrik/cNFT/master/metadata.json",
+         symbol: "Brasil",
+         uri: "https://raw.githubusercontent.com/cagrik/cNFT/master/metadata.json",
       sellerFeeBasisPoints: 100,
       creators: [
         {
@@ -100,28 +92,20 @@ let initBalance: number, balance: number;
     collectionDetails: null,
   };
 
-  // create a full token mint and initialize the collection (with the `payer` as the authority)
+  
   const collection = await createCollection(connection, payer, collectionMetadataV3);
 
-  /*
-    Mint a single compressed NFT
-  */
+
 
   const compressedNFTMetadata: MetadataArgs = {
-    name: "NFT Name",
-    symbol: collectionMetadataV3.data.symbol,
-    // specific json metadata for each NFT
-    uri: "https://supersweetcollection.notarealurl/token.json",
+    name: "Brazilian Legends",
+    symbol: "Brasil",
+    uri: "https://raw.githubusercontent.com/cagrik/cNFT/master/metadata.json",
     creators: [
       {
         address: payer.publicKey,
         verified: false,
         share: 100,
-      },
-      {
-        address: testWallet.publicKey,
-        verified: false,
-        share: 0,
       },
     ],
     editionNonce: 0,
@@ -130,12 +114,11 @@ let initBalance: number, balance: number;
     primarySaleHappened: false,
     sellerFeeBasisPoints: 0,
     isMutable: false,
-    // these values are taken from the Bubblegum package
     tokenProgramVersion: TokenProgramVersion.Original,
     tokenStandard: TokenStandard.NonFungible,
   };
 
-  // fully mint a single compressed NFT to the payer
+ 
   console.log(`Minting a single compressed NFT to ${payer.publicKey.toBase58()}...`);
 
   await mintCompressedNFT(
@@ -146,12 +129,11 @@ let initBalance: number, balance: number;
     collection.metadataAccount,
     collection.masterEditionAccount,
     compressedNFTMetadata,
-    // mint to this specific wallet (in this case, the tree owner aka `payer`)
     payer.publicKey,
   );
 
-  // fully mint a single compressed NFT
-  console.log(`Minting a single compressed NFT to ${testWallet.publicKey.toBase58()}...`);
+  // 
+  console.log(`1 adet sıkıştırılmış nft oluşturuluyor ${testWallet.publicKey.toBase58()}...`);
 
   await mintCompressedNFT(
     connection,
@@ -161,14 +143,11 @@ let initBalance: number, balance: number;
     collection.metadataAccount,
     collection.masterEditionAccount,
     compressedNFTMetadata,
-    // mint to this specific wallet (in this case, airdrop to `testWallet`)
+    // nft'nin gönderileceği adres
     testWallet.publicKey,
   );
 
-  //////////////////////////////////////////////////////////////////////////////
-  //////////////////////////////////////////////////////////////////////////////
-
-  // fetch the payer's final balance
+ //işlem öncesi cüzdan bakiyesi
   balance = await connection.getBalance(payer.publicKey);
 
   console.log(`===============================`);
@@ -178,3 +157,267 @@ let initBalance: number, balance: number;
     "SOL\n",
   );
 })();
+
+async function createTree(
+  connection: Connection,
+  payer: Keypair,
+  treeKeypair: Keypair,
+  maxDepthSizePair: ValidDepthSizePair,
+  canopyDepth: number = 0,
+) {
+  console.log("Merkle tree oluşturuluyor");
+  console.log("ağaç adresi:", treeKeypair.publicKey.toBase58());
+
+  
+  const [treeAuthority, _bump] = PublicKey.findProgramAddressSync(
+    [treeKeypair.publicKey.toBuffer()],
+    BUBBLEGUM_PROGRAM_ID,
+  );
+  console.log("treeAuthority:", treeAuthority.toBase58());
+
+  const allocTreeIx = await createAllocTreeIx(
+    connection,
+    treeKeypair.publicKey,
+    payer.publicKey,
+    maxDepthSizePair,
+    canopyDepth,
+  )};
+  async function createCollection(
+    connection: Connection,
+    payer: Keypair,
+    metadataV3: CreateMetadataAccountArgsV3,
+  ) {
+    
+    console.log("Koleksiyon oluşturuluyor");
+    const mint = await createMint(
+      connection,
+      payer,
+      // mint authority
+      payer.publicKey,
+      // freeze authority
+      payer.publicKey,
+      // `0` NFT için
+      0,
+    );
+    console.log("Mint addresi:", mint.toBase58());
+  
+    // token hesabı oluştur
+    console.log("Token Hesabı oluşturuluyor");
+    const tokenAccount = await createAccount(
+      connection,
+      payer,
+      mint,
+      payer.publicKey,
+    );
+    console.log("Token hesabı:", tokenAccount.toBase58());
+  
+    // mint 1 token ()
+    console.log("Koleksiyon için 1 adet token oluşturuluyor");
+    const mintSig = await mintTo(
+      connection,
+      payer,
+      mint,
+      tokenAccount,
+      payer,
+      1,
+      [],
+      undefined,
+      TOKEN_PROGRAM_ID,
+    );
+    
+     
+    const [metadataAccount, _bump] = PublicKey.findProgramAddressSync(
+      [Buffer.from("metadata", "utf8"), TOKEN_METADATA_PROGRAM_ID.toBuffer(), mint.toBuffer()],
+      TOKEN_METADATA_PROGRAM_ID,
+    );
+    console.log("Metadata hesabı:", metadataAccount.toBase58());
+  
+    // metadata hesabı oluşturmak için instruction
+    const createMetadataIx = createCreateMetadataAccountV3Instruction(
+      {
+        metadata: metadataAccount,
+        mint: mint,
+        mintAuthority: payer.publicKey,
+        payer: payer.publicKey,
+        updateAuthority: payer.publicKey,
+      },
+      {
+        createMetadataAccountArgsV3: metadataV3,
+      },
+    );
+  
+   
+    const [masterEditionAccount, _bump2] = PublicKey.findProgramAddressSync(
+      [
+        Buffer.from("metadata", "utf8"),
+        TOKEN_METADATA_PROGRAM_ID.toBuffer(),
+        mint.toBuffer(),
+        Buffer.from("edition", "utf8"),
+      ],
+      TOKEN_METADATA_PROGRAM_ID,
+    );
+    console.log("Master edition hesabı:", masterEditionAccount.toBase58());
+  
+    //  metadata hesabı oluşturmak için instruction
+    const createMasterEditionIx = createCreateMasterEditionV3Instruction(
+      {
+        edition: masterEditionAccount,
+        mint: mint,
+        mintAuthority: payer.publicKey,
+        payer: payer.publicKey,
+        updateAuthority: payer.publicKey,
+        metadata: metadataAccount,
+      },
+      {
+        createMasterEditionArgs: {
+          maxSupply: 0,
+        },
+      },
+    );
+  
+    // koleksiyon boyutu için instruction
+    const collectionSizeIX = createSetCollectionSizeInstruction(
+      {
+        collectionMetadata: metadataAccount,
+        collectionAuthority: payer.publicKey,
+        collectionMint: mint,
+      },
+      {
+        setCollectionSizeArgs: { size: 8 },
+      },
+    );
+  
+    try {
+      
+      const tx = new Transaction()
+        .add(createMetadataIx)
+        .add(createMasterEditionIx)
+        .add(collectionSizeIX);
+      tx.feePayer = payer.publicKey;
+  
+      // işlemi onaylayın
+      const txSignature = await sendAndConfirmTransaction(connection, tx, [payer], {
+        commitment: "confirmed",
+        skipPreflight: true,
+      });
+  
+      console.log("\nKoleksiyon başarılı bir şekilde oluşturuldu!");
+      console.log(txSignature);
+    } catch (err) {
+      console.error("\nKoleksiyon oluşturulamadı:", err);
+  
+      
+       
+  
+      throw err;
+    }
+  
+   
+    return { mint, tokenAccount, metadataAccount, masterEditionAccount };
+  }
+  async function mintCompressedNFT(
+    connection: Connection,
+    payer: Keypair,
+    treeAddress: PublicKey,
+    collectionMint: PublicKey,
+    collectionMetadata: PublicKey,
+    collectionMasterEditionAccount: PublicKey,
+    compressedNFTMetadata: MetadataArgs,
+    receiverAddress?: PublicKey,
+  ) {
+    
+    const [treeAuthority, _bump] = PublicKey.findProgramAddressSync(
+      [treeAddress.toBuffer()],
+      BUBBLEGUM_PROGRAM_ID,
+    );
+  
+    
+    const [bubblegumSigner, _bump2] = PublicKey.findProgramAddressSync(
+      
+      [Buffer.from("collection_cpi", "utf8")],
+      BUBBLEGUM_PROGRAM_ID,
+    );
+  
+    // Tek seferde birden fazla sıkıştırılmış nft üretin
+    const mintIxs: TransactionInstruction[] = [];
+  
+  
+    const metadataArgs = Object.assign(compressedNFTMetadata, {
+      collection: { key: collectionMint, verified: false },
+    });
+  
+  
+    const computedDataHash = new PublicKey(computeDataHash(metadataArgs)).toBase58();
+    const computedCreatorHash = new PublicKey(computeCreatorHash(metadataArgs.creators)).toBase58();
+    console.log("computedDataHash:", computedDataHash);
+    console.log("computedCreatorHash:", computedCreatorHash);
+  
+   
+    mintIxs.push(
+      createMintToCollectionV1Instruction(
+        {
+          payer: payer.publicKey,
+  
+          merkleTree: treeAddress,
+          treeAuthority,
+          treeDelegate: payer.publicKey,
+  
+         
+          leafOwner: receiverAddress || payer.publicKey,
+        
+          leafDelegate: payer.publicKey,
+  
+          
+  
+           
+          collectionAuthority: payer.publicKey,
+          collectionAuthorityRecordPda: BUBBLEGUM_PROGRAM_ID,
+          collectionMint: collectionMint,
+          collectionMetadata: collectionMetadata,
+          editionAccount: collectionMasterEditionAccount,
+  
+          
+          compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+          logWrapper: SPL_NOOP_PROGRAM_ID,
+          bubblegumSigner: bubblegumSigner,
+          tokenMetadataProgram: TOKEN_METADATA_PROGRAM_ID,
+        },
+        {
+          metadataArgs,
+        },
+      ),
+    );
+  
+    try {
+      
+      const tx2 = new Transaction().add(...mintIxs);
+      tx2.feePayer = payer.publicKey;
+  
+      // İşlemi onayla
+      const txSignature = await sendAndConfirmTransaction(connection, tx2, [payer], {
+        commitment: "confirmed",
+        skipPreflight: true,
+      });
+  
+      console.log("\nSıkıştırılmış NFT başarılı bir şekilde oluşturuldu");
+      console.log(txSignature);
+  
+      return txSignature;
+    } catch (err) {
+      console.error("\nSıkıştırılmış NFT oluşturulamadı", err);
+  
+     
+       
+  
+      throw err;
+    }}
+
+    function numberFormatter(num: number, forceDecimals = false) {
+ 
+      const minimumFractionDigits = num < 1 || forceDecimals ? 10 : 2;
+  
+
+      return new Intl.NumberFormat(undefined, {
+          minimumFractionDigits,
+      }).format(num);
+  }
