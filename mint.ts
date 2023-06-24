@@ -59,10 +59,10 @@ let initBalance: number, balance: number;
   
   const maxDepthSizePair: ValidDepthSizePair = {
    
-    maxDepth: 5,
-    maxBufferSize: 8,
+    maxDepth: 14,
+    maxBufferSize: 64,
   };
-  const canopyDepth = maxDepthSizePair.maxDepth - 2;
+  const canopyDepth =  maxDepthSizePair.maxDepth - 5;;
 
 
   // ağacın oluşturulacağı adres
@@ -74,7 +74,7 @@ let initBalance: number, balance: number;
 
   const collectionMetadataV3: CreateMetadataAccountArgsV3 = {
     data: {
-      name: "Brazilian Legends",
+      name: "Brazilian Legends..",
          symbol: "Brasil",
          uri: "https://raw.githubusercontent.com/cagrik/cNFT/master/metadata.json",
       sellerFeeBasisPoints: 100,
@@ -98,7 +98,7 @@ let initBalance: number, balance: number;
 
 
   const compressedNFTMetadata: MetadataArgs = {
-    name: "Brazilian Legends",
+    name: "Brazilian Legends.",
     symbol: "Brasil",
     uri: "https://raw.githubusercontent.com/cagrik/cNFT/master/metadata.json",
     creators: [
@@ -119,7 +119,7 @@ let initBalance: number, balance: number;
   };
 
  
-  console.log(`Minting a single compressed NFT to ${payer.publicKey.toBase58()}...`);
+  console.log(`1 adet sıkıştırılmış nft oluşturuluyor ${payer.publicKey.toBase58()}...`);
 
   await mintCompressedNFT(
     connection,
@@ -133,9 +133,9 @@ let initBalance: number, balance: number;
   );
 
   // 
-  console.log(`1 adet sıkıştırılmış nft oluşturuluyor ${testWallet.publicKey.toBase58()}...`);
+ // console.log(`1 adet sıkıştırılmış nft oluşturuluyor ${testWallet.publicKey.toBase58()}...`);
 
-  await mintCompressedNFT(
+  /*await mintCompressedNFT(
     connection,
     payer,
     treeKeypair.publicKey,
@@ -145,17 +145,9 @@ let initBalance: number, balance: number;
     compressedNFTMetadata,
     // nft'nin gönderileceği adres
     testWallet.publicKey,
-  );
+  );*/
 
- //işlem öncesi cüzdan bakiyesi
-  balance = await connection.getBalance(payer.publicKey);
-
-  console.log(`===============================`);
-  console.log(
-    "Total cost:",
-    numberFormatter((initBalance - balance) / LAMPORTS_PER_SOL, true),
-    "SOL\n",
-  );
+ 
 })();
 
 async function createTree(
@@ -165,7 +157,7 @@ async function createTree(
   maxDepthSizePair: ValidDepthSizePair,
   canopyDepth: number = 0,
 ) {
-  console.log("Merkle tree oluşturuluyor");
+  console.log("Merkle ağacı oluşturuluyor");
   console.log("ağaç adresi:", treeKeypair.publicKey.toBase58());
 
   
@@ -181,7 +173,52 @@ async function createTree(
     payer.publicKey,
     maxDepthSizePair,
     canopyDepth,
-  )};
+  );
+  const createTreeIx = createCreateTreeInstruction(
+    {
+      payer: payer.publicKey,
+      treeCreator: payer.publicKey,
+      treeAuthority,
+      merkleTree: treeKeypair.publicKey,
+      compressionProgram: SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+      logWrapper: SPL_NOOP_PROGRAM_ID,
+    },
+    {
+      maxBufferSize: maxDepthSizePair.maxBufferSize,
+      maxDepth: maxDepthSizePair.maxDepth,
+      public: false,
+    },
+    BUBBLEGUM_PROGRAM_ID,
+  );
+
+  try {
+    // ağacımızı oluşturmak için transaction oluşturlaım
+    const tx = new Transaction().add(allocTreeIx).add(createTreeIx);
+    tx.feePayer = payer.publicKey;
+
+    // oluşturduğumuz transactionu gönderelim
+    const txSignature = await sendAndConfirmTransaction(
+      connection,
+      tx,
+      [treeKeypair, payer],
+      {
+        commitment: "confirmed",
+        skipPreflight: true,
+      },
+    );
+
+    console.log("\nMerkle ağacı oluşturuldu");
+    console.log(txSignature);
+
+    // return useful info
+    return { treeAuthority, treeAddress: treeKeypair.publicKey };
+  } catch (err: any) {
+    console.error("\nMerkle ağacı oluşturulamadı!!!", err);
+
+  }
+
+
+};
   async function createCollection(
     connection: Connection,
     payer: Keypair,

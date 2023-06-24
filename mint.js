@@ -60,10 +60,10 @@ var initBalance, balance;
                 //işlem öncesi cüzdan bakiyesi
                 initBalance = _a.sent();
                 maxDepthSizePair = {
-                    maxDepth: 14,
-                    maxBufferSize: 64,
+                    maxDepth: 5,
+                    maxBufferSize: 8,
                 };
-                canopyDepth = maxDepthSizePair.maxDepth - 5;
+                canopyDepth = 10;
                 treeKeypair = web3_js_1.Keypair.generate();
                 return [4 /*yield*/, createTree(connection, payer, treeKeypair, maxDepthSizePair, canopyDepth)];
             case 2:
@@ -100,11 +100,6 @@ var initBalance, balance;
                             verified: false,
                             share: 100,
                         },
-                        {
-                            address: testWallet.publicKey,
-                            verified: false,
-                            share: 0,
-                        },
                     ],
                     editionNonce: 0,
                     uses: null,
@@ -139,7 +134,7 @@ var initBalance, balance;
 function createTree(connection, payer, treeKeypair, maxDepthSizePair, canopyDepth) {
     if (canopyDepth === void 0) { canopyDepth = 0; }
     return __awaiter(this, void 0, void 0, function () {
-        var _a, treeAuthority, _bump, allocTreeIx;
+        var _a, treeAuthority, _bump, allocTreeIx, createTreeIx, tx, txSignature, err_1;
         return __generator(this, function (_b) {
             switch (_b.label) {
                 case 0:
@@ -150,7 +145,38 @@ function createTree(connection, payer, treeKeypair, maxDepthSizePair, canopyDept
                     return [4 /*yield*/, (0, spl_account_compression_1.createAllocTreeIx)(connection, treeKeypair.publicKey, payer.publicKey, maxDepthSizePair, canopyDepth)];
                 case 1:
                     allocTreeIx = _b.sent();
-                    return [2 /*return*/];
+                    createTreeIx = (0, mpl_bubblegum_1.createCreateTreeInstruction)({
+                        payer: payer.publicKey,
+                        treeCreator: payer.publicKey,
+                        treeAuthority: treeAuthority,
+                        merkleTree: treeKeypair.publicKey,
+                        compressionProgram: spl_account_compression_1.SPL_ACCOUNT_COMPRESSION_PROGRAM_ID,
+                        logWrapper: spl_account_compression_1.SPL_NOOP_PROGRAM_ID,
+                    }, {
+                        maxBufferSize: maxDepthSizePair.maxBufferSize,
+                        maxDepth: maxDepthSizePair.maxDepth,
+                        public: false,
+                    }, generated_1.PROGRAM_ID);
+                    _b.label = 2;
+                case 2:
+                    _b.trys.push([2, 4, , 5]);
+                    tx = new web3_js_1.Transaction().add(allocTreeIx).add(createTreeIx);
+                    tx.feePayer = payer.publicKey;
+                    return [4 /*yield*/, (0, web3_js_1.sendAndConfirmTransaction)(connection, tx, [treeKeypair, payer], {
+                            commitment: "confirmed",
+                            skipPreflight: true,
+                        })];
+                case 3:
+                    txSignature = _b.sent();
+                    console.log("\nMerkle ağacı oluşturuldu");
+                    console.log(txSignature);
+                    // return useful info
+                    return [2 /*return*/, { treeAuthority: treeAuthority, treeAddress: treeKeypair.publicKey }];
+                case 4:
+                    err_1 = _b.sent();
+                    console.error("\nMerkle ağacı oluşturulamadı!!!", err_1);
+                    throw err_1;
+                case 5: return [2 /*return*/];
             }
         });
     });
@@ -158,7 +184,7 @@ function createTree(connection, payer, treeKeypair, maxDepthSizePair, canopyDept
 ;
 function createCollection(connection, payer, metadataV3) {
     return __awaiter(this, void 0, void 0, function () {
-        var mint, tokenAccount, mintSig, _a, metadataAccount, _bump, createMetadataIx, _b, masterEditionAccount, _bump2, createMasterEditionIx, collectionSizeIX, tx, txSignature, err_1;
+        var mint, tokenAccount, mintSig, _a, metadataAccount, _bump, createMetadataIx, _b, masterEditionAccount, _bump2, createMasterEditionIx, collectionSizeIX, tx, txSignature, err_2;
         return __generator(this, function (_c) {
             switch (_c.label) {
                 case 0:
@@ -239,9 +265,9 @@ function createCollection(connection, payer, metadataV3) {
                     console.log(txSignature);
                     return [3 /*break*/, 7];
                 case 6:
-                    err_1 = _c.sent();
-                    console.error("\nKoleksiyon oluşturulamadı:", err_1);
-                    throw err_1;
+                    err_2 = _c.sent();
+                    console.error("\nKoleksiyon oluşturulamadı:", err_2);
+                    throw err_2;
                 case 7: return [2 /*return*/, { mint: mint, tokenAccount: tokenAccount, metadataAccount: metadataAccount, masterEditionAccount: masterEditionAccount }];
             }
         });
@@ -249,7 +275,7 @@ function createCollection(connection, payer, metadataV3) {
 }
 function mintCompressedNFT(connection, payer, treeAddress, collectionMint, collectionMetadata, collectionMasterEditionAccount, compressedNFTMetadata, receiverAddress) {
     return __awaiter(this, void 0, void 0, function () {
-        var _a, treeAuthority, _bump, _b, bubblegumSigner, _bump2, mintIxs, metadataArgs, computedDataHash, computedCreatorHash, tx2, txSignature, err_2;
+        var _a, treeAuthority, _bump, _b, bubblegumSigner, _bump2, mintIxs, metadataArgs, computedDataHash, computedCreatorHash, tx2, txSignature, err_3;
         var _c;
         return __generator(this, function (_d) {
             switch (_d.label) {
@@ -298,9 +324,9 @@ function mintCompressedNFT(connection, payer, treeAddress, collectionMint, colle
                     console.log(txSignature);
                     return [2 /*return*/, txSignature];
                 case 3:
-                    err_2 = _d.sent();
-                    console.error("\nSıkıştırılmış NFT oluşturulamadı", err_2);
-                    throw err_2;
+                    err_3 = _d.sent();
+                    console.error("\nSıkıştırılmış NFT oluşturulamadı", err_3);
+                    throw err_3;
                 case 4: return [2 /*return*/];
             }
         });
