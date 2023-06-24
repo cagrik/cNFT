@@ -59,10 +59,10 @@ let initBalance: number, balance: number;
   
   const maxDepthSizePair: ValidDepthSizePair = {
    
-    maxDepth: 14,
-    maxBufferSize: 64,
+    maxDepth: 5,
+    maxBufferSize: 8,
   };
-  const canopyDepth = maxDepthSizePair.maxDepth - 5;
+  const canopyDepth = maxDepthSizePair.maxDepth - 2;
 
 
   // ağacın oluşturulacağı adres
