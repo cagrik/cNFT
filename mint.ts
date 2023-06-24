@@ -62,11 +62,11 @@ let initBalance: number, balance: number;
     Define our tree size parameters
   */
   const maxDepthSizePair: ValidDepthSizePair = {
-    // max=16,384 nodes
-    maxDepth: 14,
-    maxBufferSize: 64,
+ 
+    maxDepth: 5,
+    maxBufferSize: 8,
   };
-  const canopyDepth = maxDepthSizePair.maxDepth - 5;
+  const canopyDepth = maxDepthSizePair.maxDepth - 3;
 
   /*
     Actually allocate the tree on chain
@@ -78,18 +78,13 @@ let initBalance: number, balance: number;
   // create and send the transaction to create the tree on chain
   const tree = await createTree(connection, payer, treeKeypair, maxDepthSizePair, canopyDepth);
 
-  /*
-    Create the actual NFT collection (using the normal Metaplex method)
-    (nothing special about compression here)
-  */
-
-  // define the metadata to be used for creating the NFT collection
+  
+  //  NFT kolleksiyonu için metadata tanımlayalım
   const collectionMetadataV3: CreateMetadataAccountArgsV3 = {
     data: {
-      name: "Super Sweet NFT Collection",
-      symbol: "SSNC",
-      // specific json metadata for the collection
-      uri: "https://supersweetcollection.notarealurl/collection.json",
+      name: "Brazilian Legends",
+      symbol: "Brasil",
+      uri: "https://raw.githubusercontent.com/cagrik/cNFT/master/metadata.json",
       sellerFeeBasisPoints: 100,
       creators: [
         {

@@ -3,8 +3,8 @@
     "symbol":"BRASIL",
     "description":"Compressed NFT collection for Brazilian legends",
     "seller_fee_basis_points":0,
-    "image":" ",
+    "image":"https://raw.githubusercontent.com/cagrik/cNFT/master/content/brasil.jpg",
     "external_url":"https://twitter.com/cagri058",
-    "collection":{"name":"First Compress","family":"First Compress"},
-    "properties":{"files":[{"uri":" ","type":"image/png"},{"uri":" ","type":"image/png"},{"uri":" ","type":"image/png"},{"uri":" ","type":"image/png"}],
+    "collection":{"name":"Brazilian Legends","family":"Brasil"},
+    "properties":{"files":[{"uri":"https://raw.githubusercontent.com/cagrik/cNFT/master/content/ronaldo.jpg","type":"image/jpg"},{"uri":"https://raw.githubusercontent.com/cagrik/cNFT/master/content/robertocarlos.jpg","type":"image/jpg"},{"uri":"https://raw.githubusercontent.com/cagrik/cNFT/master/content/ronaldinho.png","type":"image/png"},{"uri":"https://raw.githubusercontent.com/cagrik/cNFT/master/content/kaka.jpg","type":"image/jpg"}],
     "category":"image","creators":[{"address":"8X5zHADZ4oTZXC59JmjVn1NRqcA6DGc649TrwL11ZdNr","share":100}]}}
